@@ -37,8 +37,8 @@ ModPlayerBalance.DefaultTalentPoint = 41
 ############################################
 
 #
-#        调整战士,其他职业同理
 #    ModPlayerBalance.Warrior.Enable
+#        描述: 允许调整战士伤害/治疗效果
 #        默认:        0 - 禁用
 #                     1 - 允许
 #    ModPlayerBalance.Warrior.Rate
@@ -47,6 +47,8 @@ ModPlayerBalance.DefaultTalentPoint = 41
 #        描述: 战士3系天赋树对应的伤害倍率,默认1.0,即不调整
 #    ModPlayerBalance.Warrior.Talent1/2/3Point
 #        描述: 战士3系天赋树伤害倍率激活所需点数,默认41
+#
+#        调整战士 武器-狂怒-防护
 #
 ModPlayerBalance.Warrior.Enable = 0
 ModPlayerBalance.Warrior.Rate = 1.0
@@ -59,7 +61,7 @@ ModPlayerBalance.Warrior.Talent3Point = 41
 
 
 #
-#        调整圣骑士
+#        调整圣骑士 神圣-防护-惩戒
 #
 ModPlayerBalance.Paladin.Enable = 0
 ModPlayerBalance.Paladin.Rate = 1.0
@@ -71,7 +73,7 @@ ModPlayerBalance.Paladin.Talent2Point = 41
 ModPlayerBalance.Paladin.Talent3Point = 41
 
 #
-#        调整猎人
+#        调整猎人 兽王-射击-生存
 #
 ModPlayerBalance.Hunter.Enable = 0
 ModPlayerBalance.Hunter.Rate = 1.0
@@ -83,7 +85,7 @@ ModPlayerBalance.Hunter.Talent2Point = 41
 ModPlayerBalance.Hunter.Talent3Point = 41
 
 #
-#        调整盗贼
+#        调整盗贼 刺杀-战斗-敏锐
 #
 ModPlayerBalance.Rogue.Enable = 0
 ModPlayerBalance.Rogue.Rate = 1.0
@@ -95,7 +97,7 @@ ModPlayerBalance.Rogue.Talent2Point = 41
 ModPlayerBalance.Rogue.Talent3Point = 41
 
 #
-#        调整牧师
+#        调整牧师 戒律-神圣-暗影
 #
 ModPlayerBalance.Priest.Enable = 0
 ModPlayerBalance.Priest.Rate = 1.0
@@ -107,7 +109,7 @@ ModPlayerBalance.Priest.Talent2Point = 41
 ModPlayerBalance.Priest.Talent3Point = 41
 
 #
-#        调整死亡骑士
+#        调整死亡骑士 鲜血-冰霜-邪恶
 #
 ModPlayerBalance.DeathKnight.Enable = 0
 ModPlayerBalance.DeathKnight.Rate = 1.0
@@ -119,7 +121,7 @@ ModPlayerBalance.DeathKnight.Talent2Point = 41
 ModPlayerBalance.DeathKnight.Talent3Point = 41
 
 #
-#        调整萨满
+#        调整萨满 元素-增强-恢复
 #
 ModPlayerBalance.Shaman.Enable = 0
 ModPlayerBalance.Shaman.Rate = 1.0
@@ -131,7 +133,7 @@ ModPlayerBalance.Shaman.Talent2Point = 41
 ModPlayerBalance.Shaman.Talent3Point = 41
 
 #
-#        调整法师
+#        调整法师 奥术-火焰-冰霜
 #
 ModPlayerBalance.Mage.Enable = 0
 ModPlayerBalance.Mage.Rate = 1.0
@@ -143,7 +145,7 @@ ModPlayerBalance.Mage.Talent2Point = 41
 ModPlayerBalance.Mage.Talent3Point = 41
 
 #
-#        调整术士
+#        调整术士 痛苦-恶魔-毁灭
 #
 ModPlayerBalance.Warlock.Enable = 0
 ModPlayerBalance.Warlock.Rate = 1.0
@@ -155,7 +157,7 @@ ModPlayerBalance.Warlock.Talent2Point = 41
 ModPlayerBalance.Warlock.Talent3Point = 41
 
 #
-#        调整德鲁伊
+#        调整德鲁伊 平衡-野性-恢复
 #
 ModPlayerBalance.Druid.Enable = 0
 ModPlayerBalance.Druid.Rate = 1.0

@@ -20,9 +20,9 @@
 #include "Unit.h"
 #include <sstream>
 
-// ============================================================================
-// 全局配置和数据结构
-// ============================================================================
+ // ============================================================================
+ // 全局配置和数据结构
+ // ============================================================================
 
 static uint32 MaxCharactersGuid = 65536;    //初始化一个下标,启动后会被角色最大(一般为最后注册玩家的)guid加一定冗余替代,冗余量能满足重启前新增加玩家数量就可
 static uint32 NeedTalents = 41;             //每天赋树最少多少点生效,考虑主天赋至少41点,可按需要在配置文件内修改.较低值会导致多个天赋都满足并叠加伤害调整
@@ -38,7 +38,7 @@ struct BalanceConfig
     float Talent1, Talent2, Talent3;
     uint32 Talent1Point, Talent2Point, Talent3Point;
 
-    BalanceConfig() : Enable(false), Rate(1.0f), Talent1(1.0f), Talent2(1.0f), Talent3(1.0f), Talent1Point(NeedTalents), Talent2Point(NeedTalents) , Talent3Point(NeedTalents) {}
+    BalanceConfig() : Enable(false), Rate(1.0f), Talent1(1.0f), Talent2(1.0f), Talent3(1.0f), Talent1Point(NeedTalents), Talent2Point(NeedTalents), Talent3Point(NeedTalents) {}
 };
 
 // 按职业ID存储配置（1-11，对应WoW职业）
@@ -87,7 +87,7 @@ static void ParseConfigString(const std::string& configStr, MapType& ratesMap)
             float rate = std::stof(item.substr(colonPos + 1));
             ratesMap[id] = rate;
         }
-        catch (...) { }
+        catch (...) {}
     }
 }
 
@@ -159,8 +159,9 @@ static float CalculatePlayerDamageRate(Player* player)
 class Mod_PlayerBalance_PlayerScript : public PlayerScript
 {
 public:
-    Mod_PlayerBalance_PlayerScript() : PlayerScript("Mod_PlayerBalance_PlayerScript", 
-    {PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_TALENTS_RESET, PLAYERHOOK_ON_PLAYER_LEARN_TALENTS, PLAYERHOOK_ON_EQUIP, PLAYERHOOK_ON_UNEQUIP_ITEM, PLAYERHOOK_ON_BEFORE_SEND_CHAT_MESSAGE}) {}
+    Mod_PlayerBalance_PlayerScript() : PlayerScript("Mod_PlayerBalance_PlayerScript",
+        { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_TALENTS_RESET, PLAYERHOOK_ON_PLAYER_LEARN_TALENTS, PLAYERHOOK_ON_CALCULATE_TALENTS_POINTS, PLAYERHOOK_ON_EQUIP, PLAYERHOOK_ON_UNEQUIP_ITEM, PLAYERHOOK_ON_BEFORE_SEND_CHAT_MESSAGE }) {
+    }
 
     void OnPlayerLogin(Player* player) override
     {
@@ -202,29 +203,41 @@ public:
             PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
     }
 
+    void OnPlayerCalculateTalentsPoints(Player const* player, uint32& /*talentPointsForLevel*/) override
+    {
+        if (!ModPlayerBalanceEnabled || !player)
+            return;
+
+        // 将 const Player* 转换为 Player* 以便调用计算函数
+        Player* nonConstPlayer = const_cast<Player*>(player);
+        uint32 guidLow = nonConstPlayer->GetGUID().GetCounter();
+        if (guidLow < MaxCharactersGuid)
+            PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(nonConstPlayer);
+    }
+
     void OnPlayerEquip(Player* player, Item* it, uint8 /*bag*/, uint8 /*slot*/, bool /*update*/)  override
     {
         if (!ModPlayerBalanceEnabled || !player || !it)
             return;
-    
+
         uint32 itemId = it->GetEntry();
         if (EquipDamageRates.find(itemId) == EquipDamageRates.end())
             return;
-    
+
         uint32 guidLow = player->GetGUID().GetCounter();
         if (guidLow < MaxCharactersGuid)
             PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
     }
-    
+
     void OnPlayerUnequip(Player* player, Item* it) override
     {
         if (!ModPlayerBalanceEnabled || !player || !it)
             return;
-    
+
         uint32 itemId = it->GetEntry();
         if (EquipDamageRates.find(itemId) == EquipDamageRates.end())
             return;
-    
+
         uint32 guidLow = player->GetGUID().GetCounter();
         if (guidLow < MaxCharactersGuid)
             PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
@@ -245,7 +258,7 @@ public:
                 if (currentRate == 0.0f)
                     currentRate = 1.0f;
                 ChatHandler(player->GetSession()).PSendSysMessage("您当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
-                msg ="";
+                msg = "";
             }
         }
     }
@@ -258,13 +271,14 @@ public:
 class Mod_PlayerBalance_UnitScript : public UnitScript
 {
 public:
-    Mod_PlayerBalance_UnitScript() : UnitScript("Mod_PlayerBalance_UnitScript", true, 
-    {UNITHOOK_MODIFY_HEAL_RECEIVED, UNITHOOK_ON_AURA_APPLY, UNITHOOK_MODIFY_MELEE_DAMAGE, UNITHOOK_MODIFY_SPELL_DAMAGE_TAKEN, UNITHOOK_MODIFY_PERIODIC_DAMAGE_AURAS_TICK}) {}
+    Mod_PlayerBalance_UnitScript() : UnitScript("Mod_PlayerBalance_UnitScript", true,
+        { UNITHOOK_MODIFY_HEAL_RECEIVED, UNITHOOK_ON_AURA_APPLY, UNITHOOK_MODIFY_MELEE_DAMAGE, UNITHOOK_MODIFY_SPELL_DAMAGE_TAKEN, UNITHOOK_MODIFY_PERIODIC_DAMAGE_AURAS_TICK }) {
+    }
 
     //直接治疗调整
     void ModifyHealReceived(Unit* /*target*/, Unit* healer, uint32& heal, SpellInfo const* spellInfo) override
     {
-		//不开启模块或治疗者不是玩家直接退出
+        //不开启模块或治疗者不是玩家直接退出
         if (!ModPlayerBalanceEnabled || !healer || !healer->ToPlayer())
             return;
 
@@ -276,16 +290,16 @@ public:
 
         if (spellInfo && !spellInfo->HasAttribute(SPELL_ATTR0_NO_IMMUNITIES) && spellInfo->Mechanic != MECHANIC_BANDAGE)
         {
-            #ifdef DEBUG_DAMAGE_CALCULATION
+#ifdef DEBUG_DAMAGE_CALCULATION
             if (ModPlayerBalanceDebugEnabled && healer->ToPlayer()->GetSession())
             {
                 uint32 originHeal = heal;
                 heal *= PlayerDamageRate[guidLow];
-                ChatHandler(healer->ToPlayer()->GetSession()).PSendSysMessage("治疗调整: {} {} 从 {} -> {}", 
+                ChatHandler(healer->ToPlayer()->GetSession()).PSendSysMessage("治疗调整: {} {} 从 {} -> {}",
                     spellInfo->SpellName[healer->ToPlayer()->GetSession()->GetSessionDbcLocale()], spellInfo->Id, originHeal, heal);
             }
             else
-            #endif
+#endif
             {
                 heal *= PlayerDamageRate[guidLow];
             }
@@ -319,16 +333,16 @@ public:
                 {
                     if (eff && eff->GetAuraType() == SPELL_AURA_SCHOOL_ABSORB && eff->GetSpellInfo()->Id == spellInfo->Id)
                     {
-                        #ifdef DEBUG_DAMAGE_CALCULATION
+#ifdef DEBUG_DAMAGE_CALCULATION
                         if (ModPlayerBalanceDebugEnabled && caster->ToPlayer()->GetSession())
                         {
                             int32 absorb = eff->GetAmount();
                             eff->SetAmount(absorb * PlayerDamageRate[guidLow]);
-                            ChatHandler(caster->ToPlayer()->GetSession()).PSendSysMessage("光环吸收调整: {} {} 从 {} -> {}", 
+                            ChatHandler(caster->ToPlayer()->GetSession()).PSendSysMessage("光环吸收调整: {} {} 从 {} -> {}",
                                 spellInfo->SpellName[caster->ToPlayer()->GetSession()->GetSessionDbcLocale()], spellInfo->Id, absorb, eff->GetAmount());
                         }
                         else
-                        #endif
+#endif
                         {
                             eff->SetAmount(eff->GetAmount() * PlayerDamageRate[guidLow]);
                         }
@@ -349,7 +363,7 @@ public:
         if (damage == 0.0f || PlayerDamageRate[guidLow] == 0.0f)    //和其他不一样,肉搏为0占比很高,所以优化下逻辑
             return;
 
-        #ifdef DEBUG_DAMAGE_CALCULATION
+#ifdef DEBUG_DAMAGE_CALCULATION
         if (ModPlayerBalanceDebugEnabled && attacker->ToPlayer()->GetSession())
         {
             uint32 originDamage = damage;
@@ -357,7 +371,7 @@ public:
             ChatHandler(attacker->ToPlayer()->GetSession()).PSendSysMessage("近战伤害调整: 从 {} -> {}", originDamage, damage);
         }
         else
-        #endif
+#endif
         {
             damage *= PlayerDamageRate[guidLow];
         }
@@ -376,16 +390,16 @@ public:
 
         if (spellInfo)
         {
-            #ifdef DEBUG_DAMAGE_CALCULATION
+#ifdef DEBUG_DAMAGE_CALCULATION
             if (ModPlayerBalanceDebugEnabled && attacker->ToPlayer()->GetSession())
             {
                 int32 originDamage = damage;
                 damage *= PlayerDamageRate[guidLow];
-                ChatHandler(attacker->ToPlayer()->GetSession()).PSendSysMessage("法术伤害调整: {} {} 从 {} -> {}", 
+                ChatHandler(attacker->ToPlayer()->GetSession()).PSendSysMessage("法术伤害调整: {} {} 从 {} -> {}",
                     spellInfo->SpellName[attacker->ToPlayer()->GetSession()->GetSessionDbcLocale()], spellInfo->Id, originDamage, damage);
             }
             else
-            #endif
+#endif
             {
                 damage *= PlayerDamageRate[guidLow];
             }
@@ -405,18 +419,18 @@ public:
 
         if (spellInfo)
         {
-            #ifdef DEBUG_DAMAGE_CALCULATION
+#ifdef DEBUG_DAMAGE_CALCULATION
             if (ModPlayerBalanceDebugEnabled && attacker->ToPlayer()->GetSession())
             {
                 uint32 originDamage = damage;
                 damage *= PlayerDamageRate[guidLow];
-                ChatHandler(attacker->ToPlayer()->GetSession()).PSendSysMessage("持续伤害调整: {} {} 从 {} -> {}", 
+                ChatHandler(attacker->ToPlayer()->GetSession()).PSendSysMessage("持续伤害调整: {} {} 从 {} -> {}",
                     spellInfo->SpellName[attacker->ToPlayer()->GetSession()->GetSessionDbcLocale()], spellInfo->Id, originDamage, damage);
             }
             else
-            #endif
+#endif
             {
-                damage *= PlayerDamageRate[guidLow]; 
+                damage *= PlayerDamageRate[guidLow];
             }
         }
     }
@@ -437,7 +451,7 @@ public:
         if (result)  //用角色lowguid数量加冗余值重新初始化,sql自增量正常下一次重启前不可能增加5千玩家.如你的服务器从来不重启且增加玩家较多,可以加大这个附加数字
         {
             MaxCharactersGuid = (*result)[0].Get<uint32>() + 5000;
-            PlayerDamageRate.assign(MaxCharactersGuid, 0.0f);        
+            PlayerDamageRate.assign(MaxCharactersGuid, 0.0f);
         }
     }
 
@@ -499,7 +513,7 @@ public:
             Player* player = itr.second;
             if (!player || !player->IsInWorld())
                 continue;
-            
+
             uint32 guidLow = player->GetGUID().GetCounter();
             if (guidLow < MaxCharactersGuid)
                 PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);

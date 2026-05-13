@@ -159,7 +159,8 @@ static float CalculatePlayerDamageRate(Player* player)
 class Mod_PlayerBalance_PlayerScript : public PlayerScript
 {
 public:
-    Mod_PlayerBalance_PlayerScript() : PlayerScript("Mod_PlayerBalance_PlayerScript") {}
+    Mod_PlayerBalance_PlayerScript() : PlayerScript("Mod_PlayerBalance_PlayerScript", 
+    {PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_TALENTS_RESET, PLAYERHOOK_ON_PLAYER_LEARN_TALENTS, PLAYERHOOK_ON_EQUIP, PLAYERHOOK_ON_UNEQUIP_ITEM, PLAYERHOOK_ON_BEFORE_SEND_CHAT_MESSAGE}) {}
 
     void OnPlayerLogin(Player* player) override
     {
@@ -228,6 +229,26 @@ public:
         if (guidLow < MaxCharactersGuid)
             PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
     }
+
+    void OnPlayerBeforeSendChatMessage(Player* player, uint32& /*type*/, uint32& /*lang*/, std::string& msg) override
+    {
+        if (msg == "jc")
+        {
+            if (!ModPlayerBalanceEnabled)
+                return;
+
+            uint32 guidLow = player->GetGUID().GetCounter();
+            float currentRate = 0.0f;
+            if (guidLow < MaxCharactersGuid)
+            {
+                currentRate = PlayerDamageRate[guidLow];
+                if (currentRate == 0.0f)
+                    currentRate = 1.0f;
+                ChatHandler(player->GetSession()).PSendSysMessage("您当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
+                msg ="";
+            }
+        }
+    }
 };
 
 // ============================================================================
@@ -237,7 +258,8 @@ public:
 class Mod_PlayerBalance_UnitScript : public UnitScript
 {
 public:
-    Mod_PlayerBalance_UnitScript() : UnitScript("Mod_PlayerBalance_UnitScript", true, { UNITHOOK_MODIFY_HEAL_RECEIVED, UNITHOOK_ON_AURA_APPLY, UNITHOOK_MODIFY_MELEE_DAMAGE, UNITHOOK_MODIFY_SPELL_DAMAGE_TAKEN, UNITHOOK_MODIFY_PERIODIC_DAMAGE_AURAS_TICK }) {}
+    Mod_PlayerBalance_UnitScript() : UnitScript("Mod_PlayerBalance_UnitScript", true, 
+    {UNITHOOK_MODIFY_HEAL_RECEIVED, UNITHOOK_ON_AURA_APPLY, UNITHOOK_MODIFY_MELEE_DAMAGE, UNITHOOK_MODIFY_SPELL_DAMAGE_TAKEN, UNITHOOK_MODIFY_PERIODIC_DAMAGE_AURAS_TICK}) {}
 
     //直接治疗调整
     void ModifyHealReceived(Unit* /*target*/, Unit* healer, uint32& heal, SpellInfo const* spellInfo) override

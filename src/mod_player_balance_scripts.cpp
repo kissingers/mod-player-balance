@@ -2,6 +2,7 @@
  * 玩家职业平衡 -- By牛皮德来
  * 职业3系列天赋树达到一定点数可调节伤害和治疗
  * 增加玩家用拥有特定技能或天赋技能可调节
+ * 增加玩家佩戴特定装备时候可调节伤害和治疗
  * 去掉了对npcbots的判断的条件编译,因为不涉及调血量,不会产生bug
  * 为了提高效率,没有对宠物进行同步提升,因为需要对每个伤害增加大量判断,可考虑对应天赋树增加玩家更多伤害替代
  */
@@ -23,13 +24,11 @@
 // 全局配置和数据结构
 // ============================================================================
 
-//定义覆盖所有玩家的guidLow的值,一旦玩家ID超过这个值,超出部分玩家将无法调整。越小的值越容易命中缓存,服务器性能越好，越大越需要调入调出缓存。一般不会超过100万.
-static uint32 MaxCharactersGuid = 65536;    //随意初始化一个下标,启动后会被实际玩家id加一定冗余替代
+static uint32 MaxCharactersGuid = 65536;    //初始化一个下标,启动后会被角色最大(一般为最后注册玩家的)guid加一定冗余替代,冗余量能满足重启前新增加玩家数量就可
 static uint32 NeedTalents = 41;             //每天赋树最少多少点生效,考虑主天赋至少41点,可按需要在配置文件内修改.较低值会导致多个天赋都满足并叠加伤害调整
 
 bool ModPlayerBalanceEnabled = false;
 bool ModPlayerBalanceDebugEnabled = false;
-
 
 // 职业配置结构体
 struct BalanceConfig
@@ -48,17 +47,21 @@ static BalanceConfig BalanceConfigs[12];
 // 全局技能倍率查表（SpellId -> Rate）
 static std::map<uint32, float> SpellDamageRates;
 
-// 玩家伤害倍率缓存（100万玩家固定大小，GUID Low -> 最终伤害倍率）
+// 全局装备倍率查表（ItemId -> Rate）
+static std::map<uint32, float> EquipDamageRates;
+
+// 玩家伤害倍率缓存（GUIDLow -> 平衡后输出倍率）
 static std::vector<float> PlayerDamageRate(MaxCharactersGuid, 0.0f);
 
 // ============================================================================
 // 工具函数
 // ============================================================================
 
-//从配置字符串解析 SpellId:Rate 格式,例如: "2231:1.2,33313:1.1"
-static void ParseSpellRateConfig(const std::string& configStr)
+// 解析配置字符串的通用函数,解析格式如: "2231:1.2,33313:1.1"
+template<typename MapType>
+static void ParseConfigString(const std::string& configStr, MapType& ratesMap)
 {
-    SpellDamageRates.clear();
+    ratesMap.clear();
 
     if (configStr.empty())
         return;
@@ -74,15 +77,15 @@ static void ParseSpellRateConfig(const std::string& configStr)
         if (start == std::string::npos) continue;
         item = item.substr(start, end - start + 1);
 
-        // 分离 SpellId:Rate
+        // 分离 Id:Rate
         size_t colonPos = item.find(':');
         if (colonPos == std::string::npos) continue;
 
         try
         {
-            uint32 spellId = std::stoul(item.substr(0, colonPos));
+            uint32 id = std::stoul(item.substr(0, colonPos));
             float rate = std::stof(item.substr(colonPos + 1));
-            SpellDamageRates[spellId] = rate;
+            ratesMap[id] = rate;
         }
         catch (...) { }
     }
@@ -125,6 +128,20 @@ static float CalculatePlayerDamageRate(Player* player)
         if (player->HasSpell(pair.first) || player->HasTalent(pair.first, player->GetActiveSpec()))
         {
             finalRate *= pair.second;
+        }
+    }
+
+    // 应用当前穿戴的装备倍率
+    for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
+    {
+        if (Item* pItem = player->GetItemByPos(INVENTORY_SLOT_BAG_0, i))
+        {
+            uint32 itemId = pItem->GetEntry();
+            auto equipIter = EquipDamageRates.find(itemId);
+            if (equipIter != EquipDamageRates.end())
+            {
+                finalRate *= equipIter->second;
+            }
         }
     }
 
@@ -179,6 +196,34 @@ public:
         if (!ModPlayerBalanceEnabled || !player)
             return;
 
+        uint32 guidLow = player->GetGUID().GetCounter();
+        if (guidLow < MaxCharactersGuid)
+            PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
+    }
+
+    void OnPlayerEquip(Player* player, Item* it, uint8 /*bag*/, uint8 /*slot*/, bool /*update*/)  override
+    {
+        if (!ModPlayerBalanceEnabled || !player || !it)
+            return;
+    
+        uint32 itemId = it->GetEntry();
+        if (EquipDamageRates.find(itemId) == EquipDamageRates.end())
+            return;
+    
+        uint32 guidLow = player->GetGUID().GetCounter();
+        if (guidLow < MaxCharactersGuid)
+            PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
+    }
+    
+    void OnPlayerUnequip(Player* player, Item* it) override
+    {
+        if (!ModPlayerBalanceEnabled || !player || !it)
+            return;
+    
+        uint32 itemId = it->GetEntry();
+        if (EquipDamageRates.find(itemId) == EquipDamageRates.end())
+            return;
+    
         uint32 guidLow = player->GetGUID().GetCounter();
         if (guidLow < MaxCharactersGuid)
             PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
@@ -367,7 +412,7 @@ public:
     void OnStartup() override  //按需修改角色下标以提高性能,只在启动时候执行一次,先于OnAfterConfigLoad,以后reload config不会执行到
     {
         QueryResult result = CharacterDatabase.Query("SELECT MAX(guid) FROM characters");
-        if (result)  //用角色lowguid数量加1万重新初始化,sql自增量正常下一次重启前不可能增加5千玩家.就算超过,伤害计算内有防溢出兜底
+        if (result)  //用角色lowguid数量加冗余值重新初始化,sql自增量正常下一次重启前不可能增加5千玩家.如你的服务器从来不重启且增加玩家较多,可以加大这个附加数字
         {
             MaxCharactersGuid = (*result)[0].Get<uint32>() + 5000;
             PlayerDamageRate.assign(MaxCharactersGuid, 0.0f);        
@@ -419,7 +464,11 @@ public:
 
         // 一次性解析全局技能配置
         std::string spellConfig = sConfigMgr->GetOption<std::string>("ModPlayerBalance.Spell", "");
-        ParseSpellRateConfig(spellConfig);
+        ParseConfigString(spellConfig, SpellDamageRates);
+
+        // 一次性解析全局装备配置
+        std::string equipConfig = sConfigMgr->GetOption<std::string>("ModPlayerBalance.Equip", "");
+        ParseConfigString(equipConfig, EquipDamageRates);
 
         //重载时候进行一次所有玩家的伤害系数重新计算,依赖其他参数,故需要放最后
         HashMapHolder<Player>::MapType const& players = ObjectAccessor::GetPlayers();

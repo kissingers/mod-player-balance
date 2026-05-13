@@ -177,3 +177,11 @@ ModPlayerBalance.Druid.Talent3Point = 41
 #        默认:         空字符串（无特殊技能倍率）
 #
 ModPlayerBalance.Spell = ""
+
+#
+#    ModPlayerBalance.Equip
+#        描述: 逗号分隔的 EquipId:Rate 配置（例如 "32837:1.05, 32838:1.06, 34334:1.07"）
+#              装备后生效,可获得伤害加成。主要用于特殊装备
+#        默认:         空字符串（无特殊装备倍率）
+#
+ModPlayerBalance.Equip = ""

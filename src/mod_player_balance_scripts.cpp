@@ -248,7 +248,7 @@ public:
 		if (!ModPlayerBalanceEnabledMod || PlayerBalanceCheckCommand.empty())
 			return;
 
-		if ( msg != ModPlayerBalanceCheckCommand)
+		if (msg != ModPlayerBalanceCheckCommand)
 			return;
 
 		uint32 guidLow = player->GetGUID().GetCounter();
@@ -260,6 +260,7 @@ public:
 			//msg = "";	// 清空消息会产生奇怪说话的提示,所以不清空,让它正常发送
 		}
 	}
+};
 
 // ============================================================================
 // Unit脚本钩子 - 伤害注入点

@@ -245,7 +245,7 @@ public:
 	}
 
 	void OnPlayerBeforeSendChatMessage(Player* player, uint32& /*type*/, uint32& /*lang*/, std::string& msg) override {
-		if (!ModPlayerBalanceEnabled || PlayerBalanceCheckCommand.empty())
+		if (!ModPlayerBalanceEnabled || ModPlayerBalanceCheckCommand.empty())
 			return;
 
 		if (msg != ModPlayerBalanceCheckCommand)

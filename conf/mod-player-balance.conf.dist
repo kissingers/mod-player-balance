@@ -26,6 +26,14 @@ ModPlayerBalance.Enable = 0
 ModPlayerBalance.DebugInfo = 0
 
 #
+#    ModPlayerBalance.CheckCommand
+#        描述: 当前天赋和技能以及装备的伤害加成查询命令.
+#        默认:         "" - 空字符串禁用命令
+#                     "jc" - 用 jc 作为查询命令,可换成任何合法的字符串
+#
+ModPlayerBalance.CheckCommand = ""
+
+#
 #    ModPlayerBalance.DefaultTalentPoint
 #        描述: 每天赋树默认激活调整伤害所需天赋点数
 #        默认:         41

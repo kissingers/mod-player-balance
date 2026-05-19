@@ -29,6 +29,7 @@ static uint32 NeedTalents = 41;             //每天赋树最少多少点生效,
 
 bool ModPlayerBalanceEnabled = false;
 bool ModPlayerBalanceDebugEnabled = false;
+std::string ModPlayerBalanceCheckCommand = "";	//用于存储配置文件中的查询命令
 
 // 职业配置结构体
 struct BalanceConfig
@@ -243,26 +244,22 @@ public:
 			PlayerDamageRate[guidLow] = CalculatePlayerDamageRate(player);
 	}
 
-	void OnPlayerBeforeSendChatMessage(Player* player, uint32& /*type*/, uint32& /*lang*/, std::string& msg) override
-	{
-		if (msg == "jc")
-		{
-			if (!ModPlayerBalanceEnabled)
-				return;
+	void OnPlayerBeforeSendChatMessage(Player* player, uint32& /*type*/, uint32& /*lang*/, std::string& msg) override {
+		if (!ModPlayerBalanceEnabledMod || PlayerBalanceCheckCommand.empty())
+			return;
 
-			uint32 guidLow = player->GetGUID().GetCounter();
-			float currentRate = 0.0f;
-			if (guidLow < MaxCharactersGuid)
-			{
-				currentRate = PlayerDamageRate[guidLow];
-				if (currentRate == 0.0f)
-					currentRate = 1.0f;
-				ChatHandler(player->GetSession()).PSendSysMessage("您当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
-				msg = "";
-			}
+		if ( msg != ModPlayerBalanceCheckCommand)
+			return;
+
+		uint32 guidLow = player->GetGUID().GetCounter();
+		float currentRate = 0.0f;
+		if (guidLow < MaxCharactersGuid) {
+			currentRate = PlayerDamageRate[guidLow];
+			if (currentRate == 0.0f) currentRate = 1.0f;
+			ChatHandler(player->GetSession()).PSendSysMessage("您当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
+			//msg = "";	// 清空消息会产生奇怪说话的提示,所以不清空,让它正常发送
 		}
 	}
-};
 
 // ============================================================================
 // Unit脚本钩子 - 伤害注入点
@@ -454,6 +451,7 @@ public:
 	{
 		ModPlayerBalanceEnabled = sConfigMgr->GetOption<bool>("ModPlayerBalance.Enable", false);
 		ModPlayerBalanceDebugEnabled = sConfigMgr->GetOption<bool>("ModPlayerBalance.DebugInfo", false);
+		ModPlayerBalanceCheckCommand = sConfigMgr->GetOption<std::string>("ModPlayerBalance.CheckCommand", "");
 		NeedTalents = sConfigMgr->GetOption<uint32>("ModPlayerBalance.DefaultTalentPoint", 41);
 
 		if (!ModPlayerBalanceEnabled)

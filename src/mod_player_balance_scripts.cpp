@@ -82,11 +82,33 @@ static void ParseConfigString(const std::string& configStr, MapType& ratesMap)
 		size_t colonPos = item.find(':');
 		if (colonPos == std::string::npos) continue;
 
+		std::string idPart = item.substr(0, colonPos);
+		std::string rateStr = item.substr(colonPos + 1);
+
 		try
 		{
-			uint32 id = std::stoul(item.substr(0, colonPos));
-			float rate = std::stof(item.substr(colonPos + 1));
-			ratesMap[id] = rate;
+			float rate = std::stof(rateStr);
+
+			// 检查是否是范围格式 (ID-ID)
+			size_t dashPos = idPart.find('-');
+			if (dashPos != std::string::npos)
+			{
+				// 范围格式
+				uint32 startId = std::stoul(idPart.substr(0, dashPos));
+				uint32 endId = std::stoul(idPart.substr(dashPos + 1));
+
+				// 添加范围内的所有ID
+				for (uint32 id = startId; id <= endId; ++id)
+				{
+					ratesMap[id] = rate;
+				}
+			}
+			else
+			{
+				// 单个ID格式
+				uint32 id = std::stoul(idPart);
+				ratesMap[id] = rate;
+			}
 		}
 		catch (...) {}
 	}

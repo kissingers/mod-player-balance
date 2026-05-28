@@ -273,6 +273,11 @@ public:
 		if (msg != ModPlayerBalanceCheckCommand)
 			return;
 
+		// 获取玩家的目标
+		Unit* target = player->GetSelectedUnit();
+		if (target && target->ToPlayer())
+			player = target->ToPlayer();
+
 		uint32 guidLow = player->GetGUID().GetCounter();
 		float currentRate = 0.0f;
 		if (guidLow < MaxCharactersGuid) {

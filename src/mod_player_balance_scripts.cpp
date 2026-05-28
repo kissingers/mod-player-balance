@@ -273,17 +273,18 @@ public:
 		if (msg != ModPlayerBalanceCheckCommand)
 			return;
 
-		// 获取玩家的目标
+		uint32 guidLow = player->GetGUID().GetCounter();
+
+		// 获取玩家的目标,如果目标是玩家则显示目标的伤害加成,否则显示自己的伤害加成
 		Unit* target = player->GetSelectedUnit();
 		if (target && target->ToPlayer())
-			player = target->ToPlayer();
+			guidLow = target->ToPlayer()->GetGUID().GetCounter();
 
-		uint32 guidLow = player->GetGUID().GetCounter();
 		float currentRate = 0.0f;
 		if (guidLow < MaxCharactersGuid) {
 			currentRate = PlayerDamageRate[guidLow];
 			if (currentRate == 0.0f) currentRate = 1.0f;
-			ChatHandler(player->GetSession()).PSendSysMessage("您当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
+			ChatHandler(player->GetSession()).PSendSysMessage("当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
 			//msg = "";	// 清空消息会产生奇怪说话的提示,所以不清空,让它正常发送
 		}
 	}

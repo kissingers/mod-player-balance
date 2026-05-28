@@ -285,7 +285,7 @@ public:
 			currentRate = PlayerDamageRate[guidLow];
 			if (currentRate == 0.0f) currentRate = 1.0f;
 			ChatHandler(player->GetSession()).PSendSysMessage("当前天赋装备和技能的伤害加成为: {:.3f}", currentRate);
-			msg.clear();
+			//msg = "";	// 清空消息会产生奇怪说话的提示,所以不清空,让它正常发送
 		}
 	}
 };
